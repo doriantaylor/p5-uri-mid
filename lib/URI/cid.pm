@@ -67,7 +67,7 @@ sub parse {
     my ($self, $string) = @_;
     $self = URI->new('cid:') unless ref $self;
 
-    $string =~ /^\s*<(.*?)>\s*$/;
+    $string =~ /^\s*<([^>]*)>\s*$/;
     $self->cid($string);
     $self;
 }

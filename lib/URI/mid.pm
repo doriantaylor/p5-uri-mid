@@ -113,7 +113,26 @@ one in scalar context, like so:
     my $mid = URI->new('mid:');
     $mid->parse($email->header('In-Reply-To'));
 
- =cut
+=cut
+
+sub parse {
+    my ($self, $string) = @_;
+    # ha! learned this trick from DBIx::Class.
+    Carp::croak('URI::mid::parse makes no sense in void context')
+          unless defined wantarray;
+
+    my @str = map { s/^\s*<([^>]*)>\s*$/$1/ } split /(?<=>)\s+(?=<)/, $string;
+
+    $self = URI->new('mid:') unless ref $self;
+
+    unless (wantarray) {
+        $self = URI->new('mid:') unless ref $self;
+        $self->opaque($str[0]);
+        return self;
+    }
+
+    map { URI->new("mid:$_") } @str;
+}
 
 =head1 SEE ALSO
 
