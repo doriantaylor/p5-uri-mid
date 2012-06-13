@@ -1,12 +1,17 @@
 package URI::mid;
 
-use 5.006;
+use 5.008;
 use strict;
 use warnings;
 
+use base qw(URI::cid);
+
+use Carp         ();
+use Scalar::Util ();
+
 =head1 NAME
 
-URI::mid - The great new URI::mid!
+URI::mid - RFC 2392 mid: URI implementation
 
 =head1 VERSION
 
@@ -16,38 +21,113 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+    use URI;
 
-Perhaps a little code snippet.
+    my $mid = URI->new('mid:');
+    $mid->mid('1bb1a82c-eb3f-415d-b82f-7fa4c63d2e31@foobar.local');
 
-    use URI::mid;
+    # or, pull it (them) straight from the header:
 
-    my $foo = URI::mid->new();
-    ...
+    my @mids = URI::mid->parse($email->header('References'));
 
-=head1 EXPORT
+    # and put it back
 
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
+    $email->header(References => join(' ', map { $_->format } @mids));
 
-=head1 SUBROUTINES/METHODS
+=head1 METHODS
 
-=head2 function1
+=head2 mid
 
-=cut
-
-sub function1 {
-}
-
-=head2 function2
+Get or set the literal C<Message-ID>.
 
 =cut
 
-sub function2 {
+sub mid {
+    my ($self, $new) = @_;
+    my $o = $self->opaque;
+    my ($mid, $cid) = ($o =~ m!^([^/]*)(?:/(.*))?$!);
+
+    if ($new) {
+        $new = $new->mid if ref $new and $new->isa('URI::mid');
+        $self->opaque(defined $cid ? "$mid/$cid" : $mid);
+        return $self;
+    }
+
+    $mid;
 }
+
+=head2 mid_uri
+
+Get just the C<Message-ID> component as a L<URI::mid> object. Returns
+itself if there is no C<Content-ID>.
+
+=cut
+
+sub mid_uri {
+    my $self = shift;
+    return $self unless $$self =~ m!/!;
+    URI->new('mid:' . shift->mid);
+}
+
+=head2 cid
+
+Get or set the C<Content-ID> as a L<URI::cid> object. Accepts a string
+or a L<URI::cid> object. Which means you can do stuff like this:
+
+    $mimepart->header('Content-ID' => $mid->cid->format);
+
+=cut
+
+sub cid {
+    my ($self, $new) = @_;
+    my $o = $self->opaque;
+    my ($mid, $cid) = ($o =~ m!^([^/]*)(?:/(.*))?$!);
+
+    if (defined $new) {
+        if (ref $new) {
+            Carp::croak('Must be a string or URI::cid')
+                  unless Scalar::Util::blessed($new) and $new->isa('URI::cid');
+            $new = $new->cid;
+        }
+        $self->opaque("$mid/$new");
+        return $self;
+    }
+
+    URI->new("cid:$cid");
+}
+
+=head2 parse
+
+Parse (i.e., remove the confining angle-brackets from) one or more
+C<Message-ID> headers. Returns them all in list context, or the first
+one in scalar context, like so:
+
+    my $mid  = URI::mid->parse($email->header('Message-ID'));
+
+    my @mids = URI::mid->parse($email->header('References'));
+
+    # Also works as an instance method:
+
+    my $mid = URI->new('mid:');
+    $mid->parse($email->header('In-Reply-To'));
+
+ =cut
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<URI::cid>
+
+=item L<http://tools.ietf.org/html/rfc2392>
+
+=item L<Email::Simple>
+
+=item L<Email::MIME>
+
+=back
 
 =head1 AUTHOR
 
@@ -55,11 +135,11 @@ Dorian Taylor, C<< <dorian at cpan.org> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-uri-mid at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=URI-mid>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
-
-
+Please report any bugs or feature requests to C<bug-uri-mid at
+rt.cpan.org>, or through the web interface at
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=URI-mid>.  I will be
+notified, and then you'll automatically be notified of progress on
+your bug as I make changes.
 
 
 =head1 SUPPORT
@@ -67,7 +147,6 @@ automatically be notified of progress on your bug as I make changes.
 You can find documentation for this module with the perldoc command.
 
     perldoc URI::mid
-
 
 You can also look for information at:
 
@@ -91,26 +170,21 @@ L<http://search.cpan.org/dist/URI-mid/>
 
 =back
 
-
-=head1 ACKNOWLEDGEMENTS
-
-
 =head1 LICENSE AND COPYRIGHT
 
 Copyright 2012 Dorian Taylor.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License"); you
+may not use this file except in compliance with the License.  You may
+obtain a copy of the License at
 
     L<http://www.apache.org/licenses/LICENSE-2.0>
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied.  See the License for the specific language governing
+permissions and limitations under the License.
 
 =cut
 

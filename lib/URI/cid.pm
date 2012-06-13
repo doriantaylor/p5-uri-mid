@@ -1,12 +1,16 @@
 package URI::cid;
 
-use 5.006;
+use 5.008;
 use strict;
 use warnings;
 
+use base qw(URI);
+
+use Carp ();
+
 =head1 NAME
 
-URI::cid - The great new URI::cid!
+URI::cid - RFC 2392 cid: URI implementation
 
 =head1 VERSION
 
@@ -19,35 +23,76 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+    use URI;
 
-Perhaps a little code snippet.
+    my $cid = $URI->new('cid:');
+    $cid->cid('c6a62d04-1037-475e-a2be-ea38f9a78b64@foobar.local')
 
-    use URI::cid;
+    # or, pull it straight from the header:
 
-    my $foo = URI::cid->new();
-    ...
+    my $cid = URI::cid->parse($mimepart->header('Content-ID'));
 
-=head1 EXPORT
+    # and put it back:
 
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
+    $mimepart->header('Content-ID' => $cid->format);
 
-=head1 SUBROUTINES/METHODS
+=head1 DESCRIPTION
 
-=head2 function1
+L<RFC 2392|http://tools.ietf.org/html/rfc2392> defines a
+straight-forward method of expressing the contents of email
+C<Message-ID> and C<Content-ID> headers as URIs. This module provides
+some utility methods for working with them.
+
+=head1 METHODS
+
+=head2 cid
+
+Get or set the C<Content-ID>.
 
 =cut
 
-sub function1 {
+sub cid {
+    my $self = shift;
+    $self->opaque(@_);
 }
 
-=head2 function2
+=head2 parse
+
+Parse (i.e., remove the confining angle-brackets from) a C<Content-ID>
+header.
 
 =cut
 
-sub function2 {
+sub parse {
+    my ($self, $string) = @_;
+    $self = URI->new('cid:') unless ref $self;
+
+    $string =~ /^\s*<(.*?)>\s*$/;
+    $self->cid($string);
+    $self;
 }
+
+=head2 format
+
+Format a C<cid:> URI as a C<Content-ID> header value.
+
+=cut
+
+sub format {
+    sprintf '<%s>', shift->cid;
+}
+
+=head1 SEE ALSO
+
+=over 4
+
+=item L<http://tools.ietf.org/html/rfc2392>
+
+=item L<Email::Simple>
+
+=item L<Email::MIME>
+
+=back
 
 =head1 AUTHOR
 
@@ -55,19 +100,17 @@ Dorian Taylor, C<< <dorian at cpan.org> >>
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-uri-mid at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=URI-mid>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
-
-
-
+Please report any bugs or feature requests to C<bug-uri-mid at
+rt.cpan.org>, or through the web interface at
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=URI-mid>.  I will be
+notified, and then you'll automatically be notified of progress on
+your bug as I make changes.
 
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
 
     perldoc URI::cid
-
 
 You can also look for information at:
 
@@ -91,25 +134,21 @@ L<http://search.cpan.org/dist/URI-mid/>
 
 =back
 
-
-=head1 ACKNOWLEDGEMENTS
-
-
 =head1 LICENSE AND COPYRIGHT
 
 Copyright 2012 Dorian Taylor.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License"); you
+may not use this file except in compliance with the License.  You may
+obtain a copy of the License at
 
     L<http://www.apache.org/licenses/LICENSE-2.0>
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied.  See the License for the specific language governing
+permissions and limitations under the License.
 
 
 =cut
