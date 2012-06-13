@@ -15,11 +15,11 @@ URI::mid - RFC 2392 mid: URI implementation
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
@@ -95,6 +95,8 @@ sub cid {
         return $self;
     }
 
+    return unless defined $cid and $cid ne '';
+
     URI->new("cid:$cid");
 }
 
@@ -121,14 +123,13 @@ sub parse {
     Carp::croak('URI::mid::parse makes no sense in void context')
           unless defined wantarray;
 
-    my @str = map { s/^\s*<([^>]*)>\s*$/$1/ } split /(?<=>)\s+(?=<)/, $string;
+    my @str = map { /^\s*<([^>]*)>\s*$/; $1 } split /(?<=>)\s*(?=<)/, $string;
 
     $self = URI->new('mid:') unless ref $self;
 
     unless (wantarray) {
-        $self = URI->new('mid:') unless ref $self;
         $self->opaque($str[0]);
-        return self;
+        return $self;
     }
 
     map { URI->new("mid:$_") } @str;
